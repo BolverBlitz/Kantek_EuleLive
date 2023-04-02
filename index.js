@@ -30,21 +30,10 @@ const pool = new pg.Pool({
  */
 const GetMessages = function (limit = 10) {
     return new Promise(function (resolve, reject) {
-        pool.query(`SELECT text, user_id AS user, found_by FROM messages LIMIT ${limit}`, (err, result) => {
+        pool.query(`SELECT text, user_id AS user, found_by FROM messages ORDER BY timestamp DESC LIMIT ${limit}`, (err, result) => {
             if (err) { reject(err) }
             resolve(result.rows);
         });
-    });
-}
-
-/**
- * Async function to wait for a specific amount of time
- * @param {Number} delay 
- * @returns 
- */
-async function wait(delay) {
-    return new Promise(function (resolve, reject) {
-        setTimeout(resolve, delay);
     });
 }
 
@@ -99,6 +88,7 @@ app.ws('/view_messages', {
     messages.forEach(element => {
         ws.send(JSON.stringify(element));
     });
+    ws.send("HISTORY DONE");
     ws.subscribe(`/new_message`);
     ws.on('close', () => console.log('Connection closed'));
 });
