@@ -193,6 +193,7 @@ app.get('/preview', async (req, res) => {
 
 app.get('/screenshot', async (req, res) => {
     const { url } = await urlSchema.validateAsync(req.query); // URL-Parameter validation
+    let browserOpen = false;
     // Convert url to base64 String
     const urlBase64 = Buffer.from(url).toString('hex').substring(16, 50);
 
@@ -207,7 +208,18 @@ app.get('/screenshot', async (req, res) => {
     }
 
     const browser = await puppeteer.launch({ headless: 'new' });
+    browserOpen = true;
     runninGBrowsers++;
+
+    // This will close the browser after 30 seconds if something goes very wrong...
+    setTimeout(async () => {
+        if (browserOpen) {
+            await browser.close();
+            if (runninGBrowsers > 0) runninGBrowsers--;
+            console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Browser FORCE closed for ${url}`);
+            return;
+        }
+    }, 30*1000);
 
     console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Screenshot requested for ${url}`);
 
@@ -232,7 +244,11 @@ app.get('/screenshot', async (req, res) => {
 
     const acceptButtons = await page.$x("//button[contains(text(),'Akzeptieren') or contains(text(),'OK')]");
     for (let button of acceptButtons) {
-        await button.click();
+        try {
+            await button.click();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     // Löschen des Cookie-Banners (optional)
@@ -251,7 +267,8 @@ app.get('/screenshot', async (req, res) => {
         });
     }
     await browser.close();
-    runninGBrowsers--;
+    browserOpen = false;
+    if (runninGBrowsers > 0) runninGBrowsers--;
 
     if (runninGBrowsers == 0) {
         console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - No browsers running anymore`);
