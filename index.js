@@ -136,7 +136,7 @@ app.set_error_handler((req, res, error) => {
 });
 
 (async () => {
-    messages = await GetMessages(10);
+    messages = await GetMessages(parseInt(process.env.MAX_HISTORY_MESSAGES, 10));
     console.log(`Loaded ${messages.length} messages from the database`);
 
     blocker = await PuppeteerBlocker.fromLists(fetch, [
