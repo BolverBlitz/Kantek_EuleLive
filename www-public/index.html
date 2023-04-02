@@ -22,6 +22,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
 
+    const MaxTotalMessages = urlParams.get('MaxTotalMessages') || 100;
     let histeryDone = urlParams.get('fetchHistoryScreenshots') == "false" ? false : true;
 
     console.log(urlParams)
@@ -135,10 +136,15 @@
         message.appendChild(table);
         setTimeout(() => {
           messagesContainer.prepend(message);
+          if(messagesContainer.childNodes.length > MaxTotalMessages) {
+            const select = document.getElementById('messages-container');
+            select.removeChild(select.lastChild);
+            TotalMessages--;
+          }
         }, showNewMessagesAfterMs);
         TotalMessages++;
 
-        document.title = `Telegram Messages (${TotalMessages})`;
+        document.title = `Telegram Messages (${TotalMessages}/${MaxTotalMessages})`;
       };
     });
   </script>

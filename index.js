@@ -108,6 +108,7 @@ if (process.env.ENABLE_SLAVE == 'true') {
 
     ws.on('message', function incoming(data) {
         messages.push(JSON.parse(data.toString()));
+        if(messages.length > parseInt(process.env.MAX_HISTORY_MESSAGES, 10)) messages.shift();
         app.publish(`/new_message`, data.toString());
     });
 }
@@ -151,6 +152,7 @@ app.post('/add_message', async (req, res) => {
 
     const value = await AddMessage.validateAsync(await req.json());
     messages.push(value);
+    if(messages.length > parseInt(process.env.MAX_HISTORY_MESSAGES, 10)) messages.shift();
     //console.log(`New message: ${value.text} (found by ${value.found_by})`);
     app.publish(`/new_message`, JSON.stringify(value));
     res.send('OK');
@@ -219,7 +221,7 @@ app.get('/screenshot', async (req, res) => {
             console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Browser FORCE closed for ${url}`);
             return;
         }
-    }, 30*1000);
+    }, parseInt(process.env.MAX_BROWSER_LIFESPAN, 10)*1000);
 
     console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Screenshot requested for ${url}`);
 
