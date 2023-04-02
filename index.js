@@ -18,6 +18,7 @@ const port = process.env.PORT || 5000;
 
 let blocker; // Adblocker
 let messages = [];
+let runninGBrowsers = 0;
 
 const pool = new pg.Pool({
     user: process.env.DB_USER,
@@ -40,6 +41,21 @@ const GetMessages = function (limit = 10) {
     });
 }
 
+const GetMemUsage = function () {
+    const formatMemoryUsage = (data) => `${Math.round(data / 1024 / 1024 * 100) / 100} MB`;
+
+    const memoryData = process.memoryUsage();
+
+    const memoryUsage = {
+        rss: `${formatMemoryUsage(memoryData.rss)}`,
+        heapTotal: `${formatMemoryUsage(memoryData.heapTotal)}`,
+        heapUsed: `${formatMemoryUsage(memoryData.heapUsed)}`,
+        external: `${formatMemoryUsage(memoryData.external)}`,
+    };
+
+    return memoryUsage;
+}
+
 if (process.env.ENABLE_SLAVE == 'true') {
     ws = new WebSocket(`${process.env.MASTER_ADDRESS}/push_messages`, {
         perMessageDeflate: false
@@ -50,8 +66,8 @@ if (process.env.ENABLE_SLAVE == 'true') {
     });
 
     ws.on('message', function incoming(data) {
-        messages.push(JSON.parse(data));
-        app.publish(`/new_message`, JSON.stringify(data));
+        messages.push(JSON.parse(data.toString()));
+        app.publish(`/new_message`, data.toString());
     });
 }
 
@@ -137,6 +153,9 @@ app.get('/preview', async (req, res) => {
 app.get('/screenshot', async (req, res) => {
     const { url } = await urlSchema.validateAsync(req.query); // URL-Parameter validation
     const browser = await puppeteer.launch({ headless: 'new' });
+    runninGBrowsers++;
+
+    console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Screenshot requested for ${url}`);
 
     const page = await browser.newPage();
     await blocker.enableBlockingInPage(page);
@@ -160,7 +179,6 @@ app.get('/screenshot', async (req, res) => {
     const acceptButtons = await page.$x("//button[contains(text(),'Akzeptieren') or contains(text(),'OK')]");
     for (let button of acceptButtons) {
         await button.click();
-        await page.waitForTimeout(1000); // Warten auf das Schließen des Banners
     }
 
     // Löschen des Cookie-Banners (optional)
@@ -171,6 +189,7 @@ app.get('/screenshot', async (req, res) => {
 
     const screenshot = await page.screenshot({ type: 'jpeg', quality: 90 });
     await browser.close();
+    runninGBrowsers--;
 
     res.set('Content-Type', 'image/jpeg');
     res.send(screenshot);

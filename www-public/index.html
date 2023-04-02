@@ -17,7 +17,8 @@
   </style>
   <script>
     let TotalMessages = 0;
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    //const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const urlRegex =/(\b(https?):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
 
     const urlParams = new URLSearchParams(window.location.search);
 
