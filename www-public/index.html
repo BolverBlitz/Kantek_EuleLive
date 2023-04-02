@@ -21,7 +21,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
 
-    let histeryDone = urlParams.get('fetchHistoryScreenshots') || false;
+    let histeryDone = urlParams.get('fetchHistoryScreenshots') == "false" ? false : true;
 
     console.log(urlParams)
 
@@ -36,6 +36,7 @@
       ws = new WebSocket(`${websocket_prefix}://${getUrl.host}/view_messages`);
 
       ws.onmessage = (event) => {
+        local_histeryDone = histeryDone; // Fixes async issue
         if(event.data == "HISTORY DONE"){
           histeryDone = true;
           return;
@@ -70,9 +71,8 @@
         tr.appendChild(td_text);
 
         let showNewMessagesAfterMs = urlParams.get('showNewMessagesAfterMs') || 0;
-
-        if(urlParams.get('enableScreenshots') == "true" && histeryDone){
-          if(urlParams.get('showNewMessagesAfterMs') == null) showNewMessagesAfterMs = 12000;
+        if(urlParams.get('enableScreenshots') == "true" && local_histeryDone){
+          if(urlParams.get('showNewMessagesAfterMs') == null) showNewMessagesAfterMs = 20000;
           const td_img = document.createElement('td');
           if(data.text != null){
             const url = data.text.match(urlRegex);

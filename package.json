@@ -18,7 +18,6 @@
     "joi": "^17.9.1",
     "open-graph-scraper": "^5.2.3",
     "pg": "^8.10.0",
-    "puppeteer": "^19.8.2",
-    "request-promise": "^4.2.6"
+    "puppeteer": "^19.8.2"
   }
 }
