@@ -16,6 +16,8 @@
   </style>
   <script>
     let TotalMessages = 0;
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+
     document.addEventListener('DOMContentLoaded', () => {
       const getUrl = window.location;
       const baseUrl = getUrl.protocol + "//" + getUrl.host + "/";
@@ -44,12 +46,69 @@
         const td_text = document.createElement('td');
         td_text.textContent = data.text;
 
+        const td_img = document.createElement('td');
+        if(data.text != null){
+          const url = data.text.match(urlRegex);
+          if(url != null){
+            if(!url[0].includes("tg://") && !url[0].includes("t.me")){
+              td_text.style = "width: 500px;";
+              console.log(url[0]);
+              fetch(`http://localhost:4999/screenshot?url=${encodeURIComponent(url[0])}`)
+                .then(response => response.blob())
+                .then(blob => {
+                  // Create a IMG element
+                  const img = document.createElement("img");
+                  img.src = URL.createObjectURL(blob);
+                  img.style = "width: 400px; cursor: pointer;";
+                  td_img.appendChild(img);
+
+                  // Erstelle ein Overlay-Element
+                  const overlay = document.createElement("div");
+                  overlay.style = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.8);
+                    display: none;
+                    justify-content: center;
+                    align-items: center;
+                  `;
+
+                  // Create a IMG element for the bigger image
+                  const overlayImg = document.createElement("img");
+                  overlayImg.src = img.src;
+                  overlayImg.style = "max-width: 100%; max-height: 100%;";
+
+                  // Add the overlay and picture in the document
+                  overlay.appendChild(overlayImg);
+                  document.body.appendChild(overlay);
+
+                  // Add event listener to the image
+                  img.addEventListener("click", () => {
+                    // Show Overlay
+                    overlay.style.display = "flex";
+                  });
+
+                  // Add event listener to the overlay
+                  overlay.addEventListener("click", () => {
+                    // Hide Overlay
+                    overlay.style.display = "none";
+                  });
+                });
+            } 
+          }
+        }
+
         const table = document.createElement('table');
         const tr = document.createElement('tr');
         tr.appendChild(td_user);
         tr.appendChild(td_found_by);
         tr.appendChild(td_text);
+        tr.appendChild(td_img);
         table.appendChild(tr);
+        
         message.appendChild(table);
 
         messagesContainer.prepend(message);

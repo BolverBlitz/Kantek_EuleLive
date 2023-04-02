@@ -4,9 +4,16 @@ const Joi = require('joi');
 const fs = require('fs');
 const pg = require('pg');
 const path = require('path');
+const puppeteer = require('puppeteer');
+const { PuppeteerBlocker } = require('@cliqz/adblocker-puppeteer');
+const fetch = require('cross-fetch');
+
+const cheerio = require('cheerio');
 
 const app = new HyperExpress.Server();
 const port = process.env.PORT || 5000;
+
+let blocker; // Adblocker
 let messages = [];
 
 const pool = new pg.Pool({
@@ -27,6 +34,17 @@ const GetMessages = function (limit = 10) {
             if (err) { reject(err) }
             resolve(result.rows);
         });
+    });
+}
+
+/**
+ * Async function to wait for a specific amount of time
+ * @param {Number} delay 
+ * @returns 
+ */
+async function wait(delay) {
+    return new Promise(function (resolve, reject) {
+        setTimeout(resolve, delay);
     });
 }
 
@@ -85,6 +103,37 @@ app.ws('/view_messages', {
     ws.on('close', () => console.log('Connection closed'));
 });
 
+app.get('/preview', async (req, res) => {
+    try {
+        const { url } = await urlSchema.validateAsync(req.query);
+        const response = await fetch(url);
+        const $ = cheerio.load(await response.text());
+        const title = $('head title').text();
+        const description = $('head meta[name="description"]').attr('content');
+        const image = $('head meta[property="og:image"]').attr('content');
+
+        res.json({ title, description, image });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.get('/screenshot', async (req, res) => {
+    const { url } = await urlSchema.validateAsync(req.query); // URL-Parameter validation
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await blocker.enableBlockingInPage(page);
+    await page.setViewport({ width: 1920, height: 1080 });
+    await page.goto(url, { waitUntil: ['load', 'domcontentloaded', 'networkidle0'] });
+
+    const screenshot = await page.screenshot({ type: 'jpeg', quality: 90 });
+    await browser.close();
+
+    res.set('Content-Type', 'image/jpeg');
+    res.send(screenshot);
+});
+
 app.set_error_handler((req, res, error) => {
     console.log(error);
     if (error.message === "No Token Provided" || error.message === "Invalid Token Provided") {
@@ -97,8 +146,13 @@ app.set_error_handler((req, res, error) => {
 });
 
 (async () => {
-    messages = await GetMessages(100);
+    messages = await GetMessages(10);
     console.log(`Loaded ${messages.length} messages from the database`);
+
+    blocker = await PuppeteerBlocker.fromLists(fetch, [
+        'https://secure.fanboy.co.nz/fanboy-cookiemonster.txt'
+    ]);
+    console.log('Loaded adblocker & cookieblocker');
 
     app.listen(port)
         .then((socket) => console.log(`Listening on port: ${port}`))
