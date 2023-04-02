@@ -136,6 +136,7 @@ app.set_error_handler((req, res, error) => {
 });
 
 (async () => {
+    try {
     messages = await GetMessages(parseInt(process.env.MAX_HISTORY_MESSAGES, 10));
     console.log(`Loaded ${messages.length} messages from the database`);
 
@@ -147,4 +148,7 @@ app.set_error_handler((req, res, error) => {
     app.listen(port)
         .then((socket) => console.log(`Listening on port: ${port}`))
         .catch((error) => console.log(`Failed to start webserver on: ${port}\nError: ${error}`));
+    } catch (err) {
+        console.log(err);
+    }
 })();
