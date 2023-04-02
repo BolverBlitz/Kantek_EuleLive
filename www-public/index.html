@@ -79,7 +79,7 @@
             if(url != null){
               if(!url[0].includes("tg://") && !url[0].includes("t.me") && !url[0].includes("WA.me") && !url[0].includes("wa.me") ){
                 td_text.style = "width: 1500px;";
-                fetch(`http://localhost:4999/screenshot?url=${encodeURIComponent(url[0])}`)
+                fetch(`${baseUrl}/screenshot?url=${encodeURIComponent(url[0])}`)
                   .then(response => response.blob())
                   .then(blob => {
                     // Create a IMG element
