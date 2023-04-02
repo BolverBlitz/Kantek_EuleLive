@@ -5,7 +5,9 @@ const fs = require('fs');
 const pg = require('pg');
 const path = require('path');
 const puppeteer = require('puppeteer');
+
 const { PuppeteerBlocker } = require('@cliqz/adblocker-puppeteer');
+
 const fetch = require('cross-fetch');
 
 const cheerio = require('cheerio');
@@ -110,12 +112,38 @@ app.get('/preview', async (req, res) => {
 
 app.get('/screenshot', async (req, res) => {
     const { url } = await urlSchema.validateAsync(req.query); // URL-Parameter validation
+    const browser = await puppeteer.launch({ headless: 'new' });
 
-    const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await blocker.enableBlockingInPage(page);
+
     await page.setViewport({ width: 1920, height: 1080 });
+
     await page.goto(url, { waitUntil: ['load', 'domcontentloaded', 'networkidle0'] });
+
+    await page.evaluate(_ => {
+        function xcc_contains(selector, text) {
+            var elements = document.querySelectorAll(selector);
+            return Array.prototype.filter.call(elements, function (element) {
+                return RegExp(text, "i").test(element.textContent.trim());
+            });
+        }
+        var _xcc;
+        _xcc = xcc_contains('[id*=cookie] a, [class*=cookie] a, [id*=cookie] button, [class*=cookie] button', '^(Alle akzeptieren|Akzeptieren|Verstanden|Zustimmen|Okay|OK)$');
+        if (_xcc != null && _xcc.length != 0) { _xcc[0].click(); }
+    });
+
+    const acceptButtons = await page.$x("//button[contains(text(),'Akzeptieren') or contains(text(),'OK')]");
+    for (let button of acceptButtons) {
+      await button.click();
+      await page.waitForTimeout(1000); // Warten auf das Schließen des Banners
+    }
+  
+    // Löschen des Cookie-Banners (optional)
+    const cookieBanner = await page.$('.cookie-banner');
+    if (cookieBanner) {
+      await cookieBanner.evaluate((banner) => banner.remove());
+    }
 
     const screenshot = await page.screenshot({ type: 'jpeg', quality: 90 });
     await browser.close();
@@ -137,17 +165,17 @@ app.set_error_handler((req, res, error) => {
 
 (async () => {
     try {
-    messages = await GetMessages(parseInt(process.env.MAX_HISTORY_MESSAGES, 10));
-    console.log(`Loaded ${messages.length} messages from the database`);
+        messages = await GetMessages(parseInt(process.env.MAX_HISTORY_MESSAGES, 10));
+        console.log(`Loaded ${messages.length} messages from the database`);
 
-    blocker = await PuppeteerBlocker.fromLists(fetch, [
-        'https://secure.fanboy.co.nz/fanboy-cookiemonster.txt'
-    ]);
-    console.log('Loaded adblocker & cookieblocker');
+        blocker = await PuppeteerBlocker.fromLists(fetch, [
+            'https://secure.fanboy.co.nz/fanboy-cookiemonster.txt'
+        ]);
+        console.log('Loaded adblocker & cookieblocker');
 
-    app.listen(port)
-        .then((socket) => console.log(`Listening on port: ${port}`))
-        .catch((error) => console.log(`Failed to start webserver on: ${port}\nError: ${error}`));
+        app.listen(port)
+            .then((socket) => console.log(`Listening on port: ${port}`))
+            .catch((error) => console.log(`Failed to start webserver on: ${port}\nError: ${error}`));
     } catch (err) {
         console.log(err);
     }
