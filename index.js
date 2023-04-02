@@ -4,6 +4,7 @@ const Joi = require('joi');
 const fs = require('fs');
 const pg = require('pg');
 const path = require('path');
+const WebSocket = require('ws');
 const puppeteer = require('puppeteer');
 
 const { PuppeteerBlocker } = require('@cliqz/adblocker-puppeteer');
@@ -36,6 +37,21 @@ const GetMessages = function (limit = 10) {
             if (err) { reject(err) }
             resolve(result.rows);
         });
+    });
+}
+
+if (process.env.ENABLE_SLAVE == 'true') {
+    ws = new WebSocket(`${process.env.MASTER_ADDRESS}/push_messages`, {
+        perMessageDeflate: false
+    });
+
+    ws.on('open', function open() {
+        console.log('Connected to master');
+    });
+
+    ws.on('message', function incoming(data) {
+        messages.push(JSON.parse(data));
+        app.publish(`/new_message`, JSON.stringify(data));
     });
 }
 
@@ -78,7 +94,7 @@ app.post('/add_message', async (req, res) => {
 
     const value = await AddMessage.validateAsync(await req.json());
     messages.push(value);
-    console.log(`New message: ${value.text} (found by ${value.found_by})`);
+    //console.log(`New message: ${value.text} (found by ${value.found_by})`);
     app.publish(`/new_message`, JSON.stringify(value));
     res.send('OK');
 });
@@ -91,6 +107,14 @@ app.ws('/view_messages', {
         ws.send(JSON.stringify(element));
     });
     ws.send("HISTORY DONE");
+    ws.subscribe(`/new_message`);
+    ws.on('close', () => console.log('Connection closed'));
+});
+
+app.ws('/push_messages', {
+    idle_timeout: 60
+}, (ws) => {
+    console.log('Connection opened');
     ws.subscribe(`/new_message`);
     ws.on('close', () => console.log('Connection closed'));
 });
@@ -135,14 +159,14 @@ app.get('/screenshot', async (req, res) => {
 
     const acceptButtons = await page.$x("//button[contains(text(),'Akzeptieren') or contains(text(),'OK')]");
     for (let button of acceptButtons) {
-      await button.click();
-      await page.waitForTimeout(1000); // Warten auf das Schließen des Banners
+        await button.click();
+        await page.waitForTimeout(1000); // Warten auf das Schließen des Banners
     }
-  
+
     // Löschen des Cookie-Banners (optional)
     const cookieBanner = await page.$('.cookie-banner');
     if (cookieBanner) {
-      await cookieBanner.evaluate((banner) => banner.remove());
+        await cookieBanner.evaluate((banner) => banner.remove());
     }
 
     const screenshot = await page.screenshot({ type: 'jpeg', quality: 90 });
