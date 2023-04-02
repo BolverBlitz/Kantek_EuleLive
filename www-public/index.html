@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telegram Messages</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .message {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+  </style>
+  <script>
+    let TotalMessages = 0;
+    document.addEventListener('DOMContentLoaded', () => {
+      const getUrl = window.location;
+      const baseUrl = getUrl.protocol + "//" + getUrl.host + "/";
+
+      let websocket_prefix = "wss";
+      if (location.protocol !== 'https:') {
+        websocket_prefix = "ws";
+      }
+      ws = new WebSocket(`${websocket_prefix}://${getUrl.host}/view_messages`);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const messagesContainer = document.getElementById('messages-container');
+        const message = document.createElement('div');
+        message.classList.add('message');
+        // Use a HTML table to display the content with static width with inline css mit td_text
+
+        const td_user = document.createElement('td');
+        td_user.textContent = data.user;
+        td_user.style = "width: 130px;";
+
+        const td_found_by = document.createElement('td');
+        td_found_by.textContent = data.found_by;
+        td_found_by.style = "width: 80px;";
+
+        const td_text = document.createElement('td');
+        td_text.textContent = data.text;
+
+        const table = document.createElement('table');
+        const tr = document.createElement('tr');
+        tr.appendChild(td_user);
+        tr.appendChild(td_found_by);
+        tr.appendChild(td_text);
+        table.appendChild(tr);
+        message.appendChild(table);
+
+        messagesContainer.prepend(message);
+        TotalMessages++;
+
+        document.title = `Telegram Messages (${TotalMessages})`;
+      };
+    });
+  </script>
+</head>
+<body>
+  <h1>Telegram Messages</h1>
+  <div id="messages-container">
+  </div>
+</body>
+</html>

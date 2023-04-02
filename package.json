@@ -1,0 +1,22 @@
+{
+  "name": "eulelive",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "BolverBlitz",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.0.3",
+    "hyper-express": "^6.5.8",
+    "joi": "^17.9.1",
+    "open-graph-scraper": "^5.2.3",
+    "pg": "^8.10.0",
+    "puppeteer": "^19.8.2",
+    "request-promise": "^4.2.6"
+  }
+}
