@@ -19,6 +19,7 @@ const port = process.env.PORT || 5000;
 let blocker; // Adblocker
 let messages = [];
 let runninGBrowsers = 0;
+const CACHE_DURATION_DAYS = parseInt(process.env.CACHE_DURATION_DAYS, 10) || 1;
 
 const pool = new pg.Pool({
     user: process.env.DB_USER,
@@ -54,6 +55,46 @@ const GetMemUsage = function () {
     };
 
     return memoryUsage;
+}
+
+/**
+ * 
+ * @param {String} dir 
+ * @param {Function} callback 
+ */
+function walkDir(dir, callback) {
+    fs.readdirSync(dir).forEach(f => {
+        let dirPath = path.join(dir, f);
+        let isDirectory = fs.statSync(dirPath).isDirectory();
+        isDirectory ?
+            walkDir(dirPath, callback) : callback(path.join(dir, f));
+    });
+};
+
+if (process.env.CACHE_PICTURES == 'true') {
+    console.log('Ckeching IMGcache folder...')
+    if (!fs.existsSync(path.join(__dirname + '/IMGcache'))) {
+        fs.mkdirSync(path.join(__dirname + '/IMGcache'));
+    }
+
+    setInterval(async () => {
+        console.log('Checking for old cache files...')
+        walkDir(path.join(__dirname + '/IMGcache'), function (filePath) {
+            console.log(filePath)
+            fs.stat(filePath, function (err, stat) {
+                var now = new Date().getTime();
+                var endTime = new Date(stat.mtime).getTime() + CACHE_DURATION_DAYS*24*60*60*1000; // 1days in miliseconds
+                if (err) { return console.error(err); }
+        
+                if (now > endTime) {
+                    console.log('Deleting old cache file: ' + filePath)
+                    return fs.unlink(filePath, function (err) {
+                        if (err) return console.error(err);
+                    });
+                }
+            })
+        });
+    }, 24 * 60 * 60 * 1000);
 }
 
 if (process.env.ENABLE_SLAVE == 'true') {
@@ -152,6 +193,19 @@ app.get('/preview', async (req, res) => {
 
 app.get('/screenshot', async (req, res) => {
     const { url } = await urlSchema.validateAsync(req.query); // URL-Parameter validation
+    // Convert url to base64 String
+    const urlBase64 = Buffer.from(url).toString('hex').substring(16, 50);
+
+    // Check if the screenshot is already cached and if true, send it
+    if (process.env.CACHE_PICTURES == 'true') {
+        if (fs.existsSync(__dirname + `/IMGcache/${urlBase64}.jpg`)) {
+            console.log(`Screenshot already cached for ${url}`)
+            res.set('Content-Type', 'image/jpeg');
+            res.sendFile(__dirname + `/IMGcache/${urlBase64}.jpg`);
+            return;
+        }
+    }
+
     const browser = await puppeteer.launch({ headless: 'new' });
     runninGBrowsers++;
 
@@ -188,8 +242,20 @@ app.get('/screenshot', async (req, res) => {
     }
 
     const screenshot = await page.screenshot({ type: 'jpeg', quality: 90 });
+    // Save screenshot to disk if cache is enabled, with the filename being the base64 encoded url
+    if (process.env.CACHE_PICTURES == 'true') {
+        fs.writeFile(path.join(__dirname, 'IMGcache', urlBase64 + '.jpg'), screenshot, function (err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+    }
     await browser.close();
     runninGBrowsers--;
+
+    if (runninGBrowsers == 0) {
+        console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - No browsers running anymore`);
+    }
 
     res.set('Content-Type', 'image/jpeg');
     res.send(screenshot);
