@@ -209,7 +209,7 @@ app.get('/screenshot', async (req, res) => {
         }
     }
 
-    const browser = await puppeteer.launch({ headless: 'new' });
+    const browser = await puppeteer.launch({ headless: 'new', timeout: process.env.MAX_BROWSER_LIFESPAN*1000 });
     browserOpen = true;
     runninGBrowsers++;
 
