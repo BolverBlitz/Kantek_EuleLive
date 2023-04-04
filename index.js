@@ -218,6 +218,10 @@ app.get('/screenshot', async (req, res) => {
         if (browserOpen) {
             await browser.close();
             if (runninGBrowsers > 0) runninGBrowsers--;
+            // Copy the error screenshot to the cache folder with the URL name
+            if (process.env.CACHE_PICTURES == 'true') {
+                fs.copyFileSync(__dirname + '/ErrorScreenshot.png', __dirname + `/IMGcache/${urlBase64}.jpg`);
+            }
             console.log(`Browsers running: ${runninGBrowsers} - mem: ${GetMemUsage().rss} - Browser FORCE closed for ${url}`);
             return;
         }
