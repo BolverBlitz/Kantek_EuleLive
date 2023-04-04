@@ -230,7 +230,7 @@ app.get('/screenshot', async (req, res) => {
 
     await page.setViewport({ width: 1920, height: 1080 });
 
-    await page.goto(url, { waitUntil: ['load', 'domcontentloaded', 'networkidle0'] });
+    await page.goto(url, { waitUntil: ['load', 'domcontentloaded', 'networkidle0'], timeout: parseInt(process.env.MAX_BROWSER_LIFESPAN, 10)*1000 });
 
     await page.evaluate(_ => {
         function xcc_contains(selector, text) {
