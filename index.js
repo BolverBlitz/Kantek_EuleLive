@@ -116,7 +116,7 @@ if (process.env.ENABLE_SLAVE == 'true') {
 const add_message_token = process.env.ADD_MESSAGETOKEN;
 
 const AddMessage = Joi.object({
-    text: Joi.string().required(),
+    text: Joi.string().allow(null, '').required(),
     user: Joi.number().required(),
     found_by: Joi.string().required(),
 });
