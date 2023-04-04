@@ -79,7 +79,7 @@
           if(data.text != null){
             const url = data.text.match(urlRegex);
             if(url != null){
-              if(!url[0].includes("tg://") && !url[0].includes("t.me") && !url[0].includes("WA.me") && !url[0].includes("wa.me") ){
+              if(!url[0].includes("tg://") && !url[0].includes("t.me") && !url[0].includes("WA.me") && !url[0].includes("wa.me") && !url[0].includes("whatsapp.com")&& !url[0].includes("telegram.org") ){
                 td_text.style = "width: 1500px;";
                 fetch(`${baseUrl}screenshot?url=${encodeURIComponent(url[0])}`)
                   .then(response => response.blob())
